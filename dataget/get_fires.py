@@ -116,7 +116,7 @@ def download_hdf(folder, MOD_ID, urlprefix):
         lat = prof['info']['latitude']
         area = prof['info']['acres_burned']
        
-    if int(area) < 100:
+    if int(area) < 1000:
         return
     
     if (h08v05_info['lat_min'] < lat <= h08v05_info['lat_max']): 

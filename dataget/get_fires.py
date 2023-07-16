@@ -29,19 +29,19 @@ tiles = [{
 }]
 
             
-#wildfires = glob('/home/fun/wildfire_data/'+ sys.argv[1]) # no forward slash
+wildfires = glob('/home/fun/wildfire_data/'+ sys.argv[1]) # no forward slash
 print(sys.argv)
 radius = 25
 
 for wildfire in wildfires:
     print ('================= downloading  ' + wildfire + '==================')
-    f.download_one_fire(wildfire +'/', 'MOD13Q1.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles ) # vegi index
-    fillvalue = -3000 # JH: MOD13Q1 fill value is -3000
-    f.write_imgs(wildfire, radius, fillvalue, tiles, 'fires')
+#     f.download_one_fire(wildfire +'/', 'MOD13Q1.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles ) # vegi index
+#     fillvalue = -3000 # JH: MOD13Q1 fill value is -3000
+#     f.write_imgs(wildfire, radius, fillvalue, tiles,'')
     
-#     download_one_fire(wildfire +'/', 'MOD11A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/' )  # land temporature
-#     fillvalue = 0 # JH: MOD13Q1 fill value is 0
-#     write_imgs(wildfire, radius, fillvalue)
+    f.download_one_fire(wildfire +'/', 'MOD11A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles )  # land temporature
+    fillvalue = 0 # JH: MOD13Q1 fill value is 0
+    f.write_imgs(wildfire, radius, fillvalue,tiles, '')
 # #     download_one_fire(wildfire +'/', 'MCD64A1.006', '1m', 'https://e4ftl01.cr.usgs.gov/MOTA/' ) #burned area
     #download_one_fire(wildfire +'/', 'MOD14A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/' ) # firemask
     

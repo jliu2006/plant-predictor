@@ -214,7 +214,7 @@ def load_coords():
         arr = load_lon_lat(txt)
         coords[name] = arr
 
-def write_imgs(folder, radius, fillvalue, tiles):
+def write_imgs(folder, radius, fillvalue, tiles, typeindex):
     profile = folder + '/profile.json'
     with open(profile) as f:
         prof = json.load(f)
@@ -239,7 +239,7 @@ def write_imgs(folder, radius, fillvalue, tiles):
         subimg = get_subimg(lat, lon, radius, mod, mod[-45:-38], tiles)
         avg = np.mean(subimg)
         subimg[subimg == fillvalue] = avg  #JH: replacing fill value with average value
-        file = folder + '/' + mod[-45:-38] + '_' + date.strftime('%Y-%m-%d') + '.npy'
+        file = folder + '/' + typeindex + mod[-45:-38] + '_' + date.strftime('%Y-%m-%d') + '.npy'
         np.save(file, subimg)
         if os.path.isfile(mod):
             print("removing...", mod)

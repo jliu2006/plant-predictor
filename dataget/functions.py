@@ -65,14 +65,20 @@ def generate_modis_url(datestr, MOD_ID , urlprefix):
 
 def download_one_fire(folder, MOD_ID, dt, urlprefix, tiles):
     globprof = folder + 'profile.json'
+    
     with open(globprof) as f:
         prof = json.load(f)
         area = prof['info']['acres_burned']
-    if int(area) < 10000:
+        print ('area:' ,area)
+        
+        end = datetime.datetime.strptime(prof['end'], '%Y-%m-%d')
+        cutoff_date = end.replace(year=2021, month=2, day=1)
+    try: 
+        if (int(area) >= 10000 and end <= cutoff_date): #JH: if burned area is too small or the end date is too recent
+            download_html(folder, MOD_ID, dt, urlprefix)
+            download_hdf(folder, MOD_ID, urlprefix, tiles, 'fires_index_')
+    except:
         return
-    
-    download_html(folder, MOD_ID, dt, urlprefix)
-    download_hdf(folder, MOD_ID, urlprefix, tiles, 'fires_index_')
 
 def download_html(folder, MOD_ID, dt, urlprefix):
     profile = folder + 'profile.json'
@@ -87,9 +93,9 @@ def download_html(folder, MOD_ID, dt, urlprefix):
         end = datetime.datetime.strptime(info['end'], '%Y-%m-%d')
 
         begin_date = end - timedelta(days=90) # 
-#         final_date = end + timedelta(days=720) # 
+        final_date = end + timedelta(days=800) # 
         it_date = begin_date
-        while (it_id < frame):
+        while (it_id < frame and it_date < final_date):
             try:
                 datestr = it_date.strftime('%Y-%m-%d')
                 print(datestr)
@@ -109,10 +115,11 @@ def download_html(folder, MOD_ID, dt, urlprefix):
         end = datetime.datetime.strptime(info['end'][0:7]+'-01', '%Y-%m-%d')
         
         begin_date = end - timedelta(days=90) # 
-#         final_date = end + relativedelta(months=1)
+        
+        final_date = end + timedelta(days=800) # 
 
         it_date = begin_date
-        while (it_id < frame):
+        while (it_id < frame and it_date < final_date):
             datestr = it_date.strftime('%Y-%m-%d')
             print(datestr)
             url = generate_modis_url(datestr, MOD_ID, urlprefix)
@@ -236,11 +243,14 @@ def write_imgs(folder, radius, fillvalue, tiles, typeindex):
     print("ALL FILES:", mods)
     for mod in mods:
         date = datetime.datetime(int(mod[-36:-32]), 1, 1) + datetime.timedelta(days = int(mod[-32:-29])-1)
-        subimg = get_subimg(lat, lon, radius, mod, mod[-45:-38], tiles)
-        avg = np.mean(subimg)
-        subimg[subimg == fillvalue] = avg  #JH: replacing fill value with average value
-        file = folder + '/' + typeindex + mod[-45:-38] + '_' + date.strftime('%Y-%m-%d') + '.npy'
-        np.save(file, subimg)
+        try:  # may not be sufficient to crop
+            subimg = get_subimg(lat, lon, radius, mod, mod[-45:-38], tiles)
+            avg = np.mean(subimg)
+            subimg[subimg == fillvalue] = avg  #JH: replacing fill value with average value
+            file = folder + '/' + typeindex + mod[-45:-38] + '_' + date.strftime('%Y-%m-%d') + '.npy'
+            np.save(file, subimg)
+        except:
+            continue
         if os.path.isfile(mod):
             print("removing...", mod)
             os.remove(mod)

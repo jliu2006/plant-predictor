@@ -148,7 +148,7 @@ def get_monthly_precip_imerg(folder):
     
     
     frame = 27  #JH: download fixed number of series
-    day_per_frame = 32
+    day_per_frame = 4 #JH: pick 4 days for each frame, 8 days apart from each other 
     precip_daily = np.zeros((frame, day_per_frame))
     precip_monthly = np.zeros((frame, 1))
     it_date = begin_date
@@ -162,10 +162,15 @@ def get_monthly_precip_imerg(folder):
             if filename is None:
                 continue
             download_file(folder, url, filename)
-            precip_daily[i,j] = get_precip(folder+filename, lon, lat)
+            precip_daily[i,j] = (get_precip(folder+filename, lon, lat) + 
+            get_precip(folder+filename, lon+1, lat+1) + 
+            get_precip(folder+filename, lon+1, lat-1) + 
+            get_precip(folder+filename, lon-1, lat+1) + 
+            get_precip(folder+filename, lon-1, lat-1) )
+
             precip_monthly[i] = precip_monthly[i] + precip_daily[i,j]
             
-            it_date = it_date + timedelta(days= 1)
+            it_date = it_date + timedelta(days= 8) #JH too time consuming to get daily, we now get precip every 8 days
             print('precip : ', i , j, precip_daily[i,j])
             if os.path.isfile(folder+filename):
                 print("removing...", folder+filename)
@@ -184,12 +189,17 @@ for wildfire in wildfires:
     with open(globprof) as f:
         prof = json.load(f)
         area = prof['info']['acres_burned']
-    if int(area) < 10000:
-        print(wildfire +' burned area is less than 10000')
+        end = datetime.datetime.strptime(prof['end'], '%Y-%m-%d')
+        cutoff_date = end.replace(year=2021, month=2, day=1)
+    if (int(area) < 10000 or end > cutoff_date):
+        print(wildfire +' burned area is less than 10000 or the end date is too recent')
         
     else:
-        print ('================= downloading imerg precipitation into ' + wildfire + '==================')
-        get_monthly_precip_imerg(wildfire + '/')  
+        if os.path.isfile(wildfire +'/monthly_percip.npy'):
+            print("monthly_percip.npy File exists")
+        else:
+            print ('================= downloading imerg precipitation into ' + wildfire + '==================')
+            get_monthly_precip_imerg(wildfire + '/')  
 
 
   

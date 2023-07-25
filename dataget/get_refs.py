@@ -30,12 +30,12 @@ def download_ref(folder, filename, datestr, MOD_ID, urlprefix):
         filename = 'refer_index_' + MOD_ID + '_' + datestr + '.html'
         print("HTML:", filename)
         
-    print ('downloading file ', url)
+    print('downloading file ', url)
     
     r = requests.get(url, auth = (username, password))
 
     if r.status_code == 200:
-        print ('writing to', folder + filename)
+        print('writing to', folder + filename)
         if os.path.isfile(folder + filename):
             return 
         with open(folder + filename, 'wb') as out:
@@ -73,7 +73,9 @@ def download_ref_wrapped(folder, MOD_ID, dt, urlprefix, tiles):
     with open(globprof) as file:
         prof = json.load(file)
         area = prof['info']['acres_burned']
-    if int(area) < 10000:
+        end = datetime.datetime.strptime(prof['end'], '%Y-%m-%d')
+        cutoff_date = end.replace(year=2021, month=2, day=1)
+    if (int(area) < 3000 or end > cutoff_date):
         return
     
     download_ref_html(folder, MOD_ID, dt, urlprefix)
@@ -97,5 +99,28 @@ print(sys.argv[1])
 wildfires = glob('/home/fun/wildfire_data/' + sys.argv[1])
 
 for wildfire in wildfires:
-    download_ref_wrapped(wildfire + '/', 'MOD13Q1.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles)
-    f.write_imgs(wildfire, radius, fillvalue, tiles, 'r_')
+    MOD_ref_files = glob(wildfire + '/r_*.npy')
+    if(len(MOD_ref_files) != 12):
+        print('len',len(MOD_ref_files))
+        download_ref_wrapped(wildfire + '/', 'MOD13Q1.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles)
+        f.write_imgs(wildfire, radius, fillvalue, tiles, 'r_')
+        
+#     else:
+#         ref_file = np.load(MOD_ref_files[0])
+#         if (ref_file.shape[0] == 2):
+#             print(wildfire, 'ref exist and channel is 22222')
+#             download_ref_wrapped(wildfire + '/', 'MOD13Q1.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles)
+#             f.write_imgs(wildfire, radius, fillvalue, tiles, 'r_')
+#         else: 
+#             print(wildfire, 'ref exist and channel is 3')
+
+
+
+
+
+            
+            
+            
+            
+        
+        

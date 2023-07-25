@@ -74,7 +74,7 @@ def download_one_fire(folder, MOD_ID, dt, urlprefix, tiles):
         end = datetime.datetime.strptime(prof['end'], '%Y-%m-%d')
         cutoff_date = end.replace(year=2021, month=2, day=1)
     try: 
-        if (int(area) >= 10000 and end <= cutoff_date): #JH: if burned area is too small or the end date is too recent
+        if (int(area) >= 3000 and end <= cutoff_date): #JH: if burned area is too small or the end date is too recent
             download_html(folder, MOD_ID, dt, urlprefix)
             download_hdf(folder, MOD_ID, urlprefix, tiles, 'fires_index_')
     except:
@@ -86,14 +86,19 @@ def download_html(folder, MOD_ID, dt, urlprefix):
     info = json.load(f)
     
     it_id = 0
-    frame = 27  #JH: download fixed number of series
+    frame = 12  #JH: download fixed number of series, set to 25
     
     if dt[-1] == 'd':
         start = datetime.datetime.strptime(info['start'], '%Y-%m-%d')
         end = datetime.datetime.strptime(info['end'], '%Y-%m-%d')
 
-        begin_date = end - timedelta(days=90) # 
-        final_date = end + timedelta(days=800) # 
+        
+#         begin_date = end - timedelta(days=90) # 
+#         final_date = end + timedelta(days=800)
+           
+        
+        begin_date = end - timedelta(days=330) # 
+        final_date = end + timedelta(days=60) # 
         it_date = begin_date
         while (it_id < frame and it_date < final_date):
             try:
@@ -103,7 +108,7 @@ def download_html(folder, MOD_ID, dt, urlprefix):
                 download_file(folder, "", datestr, MOD_ID, urlprefix, 'fires_index_')
 
                 if os.path.isfile(folder + 'fires_index_' + MOD_ID + '_' + datestr + '.html'):
-                    it_date = it_date + timedelta(days=32)
+                    it_date = it_date + timedelta(days=32)# change to 28 day for MCD file, 32 for MOD files
                     it_id = it_id +1
                 else:
                     it_date = it_date + timedelta(days=1)
@@ -114,11 +119,12 @@ def download_html(folder, MOD_ID, dt, urlprefix):
         start = datetime.datetime.strptime(info['start'][0:7]+'-01', '%Y-%m-%d')
         end = datetime.datetime.strptime(info['end'][0:7]+'-01', '%Y-%m-%d')
         
-        begin_date = end - timedelta(days=90) # 
+        begin_date = end + relativedelta(months= -5) # 
         
-        final_date = end + timedelta(days=800) # 
+        final_date = end + relativedelta(months= 1) # 
 
         it_date = begin_date
+        print('MCD:', it_date)
         while (it_id < frame and it_date < final_date):
             datestr = it_date.strftime('%Y-%m-%d')
             print(datestr)
@@ -167,6 +173,7 @@ def get_coords(lat, lon, MOD, tiles):
     lat_index = 0
     
     tile = None
+    
     for it in tiles:
         if it['lat_min'] < lat <= it['lat_max']: 
             MOD_lat = MOD + '_' + it['name'] + '_lat'
@@ -187,15 +194,20 @@ def get_coords(lat, lon, MOD, tiles):
 
 def get_subimg(lat, lon, radius, hdf_link, MOD, tiles):
     lat_index, lon_index = get_coords(lat, lon, MOD, tiles)
+    
     hdf = SD(hdf_link)
     ndvi = hdf.select(0).get()
     evi = hdf.select(1).get()
-    # print(lat_index, lon_index)
+#     qa = hdf.select(11).get()
+    print(lat_index, lon_index)
     ndvi_img = ndvi[lat_index-radius:lat_index+radius, lon_index-radius:lon_index+radius]
     evi_img = evi[lat_index-radius:lat_index+radius, lon_index-radius:lon_index+radius]
-    subimg = np.zeros(shape=(2, radius*2, radius*2)) # batch, time, chan, h, w
+#     qa_img = qa[lat_index-radius:lat_index+radius, lon_index-radius:lon_index+radius]
+    subimg = np.zeros(shape=(2, radius*2, radius*2)) # batch, time, chan, h, w,
     subimg[0] = ndvi_img
     subimg[1] = evi_img
+#     subimg[2] = qa_img
+    
     return subimg
 
 def load_lon_lat(txt):
@@ -210,8 +222,8 @@ def load_lon_lat(txt):
 def load_coords():
     global coords
     coords = dict()
-    lat = glob('/home/fun/wildfire_coords/*lat.txt')
-    lon = glob('/home/fun/wildfire_coords/*lon.txt')
+    lat = glob('/home/fun/wildfire_coords/MOD14*lat.txt')
+    lon = glob('/home/fun/wildfire_coords/MOD14*lon.txt')
     for txt in lat:
         name = txt[-22:-4]
         arr = load_lon_lat(txt)
@@ -238,14 +250,14 @@ def write_imgs(folder, radius, fillvalue, tiles, typeindex):
         print ("tile not found")
         return
         
-    mod_link = folder + '/' + 'MOD*' + tile['name'] + '*'
+    mod_link = folder + '/' + 'MOD*' + tile['name'] + '*'  # change to MCD* for MCD file
     mods = glob(mod_link)
     print("ALL FILES:", mods)
     for mod in mods:
         date = datetime.datetime(int(mod[-36:-32]), 1, 1) + datetime.timedelta(days = int(mod[-32:-29])-1)
         try:  # may not be sufficient to crop
             subimg = get_subimg(lat, lon, radius, mod, mod[-45:-38], tiles)
-            avg = np.mean(subimg)
+            avg = np.median(subimg[0:1,:,:])
             subimg[subimg == fillvalue] = avg  #JH: replacing fill value with average value
             file = folder + '/' + typeindex + mod[-45:-38] + '_' + date.strftime('%Y-%m-%d') + '.npy'
             np.save(file, subimg)

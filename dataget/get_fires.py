@@ -39,9 +39,14 @@ for wildfire in wildfires:
 #     fillvalue = -3000 # JH: MOD13Q1 fill value is -3000
 #     f.write_imgs(wildfire, radius, fillvalue, tiles,'')
     
-    f.download_one_fire(wildfire +'/', 'MOD11A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles )  # land temporature
-    fillvalue = 0 # JH: MOD13Q1 fill value is 0
-    f.write_imgs(wildfire, radius, fillvalue,tiles, '')
+    MOD11_files = glob(wildfire + '/MOD11*.npy')
+    if(len(MOD11_files) < 25):
+        f.download_one_fire(wildfire +'/', 'MOD11A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/', tiles )  # land temporature
+#         fillvalue = 0 # JH: MOD13Q1 fill value is 0
+#         f.write_imgs(wildfire, radius, fillvalue,tiles, '')
+    else:
+        print('MOD11A files exisit')
+    
 # #     download_one_fire(wildfire +'/', 'MCD64A1.006', '1m', 'https://e4ftl01.cr.usgs.gov/MOTA/' ) #burned area
     #download_one_fire(wildfire +'/', 'MOD14A2.006', '32d', 'https://e4ftl01.cr.usgs.gov/MOLT/' ) # firemask
     

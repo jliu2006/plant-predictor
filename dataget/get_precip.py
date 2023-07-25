@@ -144,10 +144,10 @@ def get_monthly_precip_imerg(folder):
                                      
     start = datetime.datetime.strptime(info['start'], '%Y-%m-%d')
     end = datetime.datetime.strptime(info['end'], '%Y-%m-%d')
-    begin_date = end - timedelta(days = 90)
+    begin_date = end - timedelta(days = 30)
     
     
-    frame = 27  #JH: download fixed number of series
+    frame = 25  #JH: download fixed number of series
     day_per_frame = 4 #JH: pick 4 days for each frame, 8 days apart from each other 
     precip_daily = np.zeros((frame, day_per_frame))
     precip_monthly = np.zeros((frame, 1))
@@ -191,8 +191,8 @@ for wildfire in wildfires:
         area = prof['info']['acres_burned']
         end = datetime.datetime.strptime(prof['end'], '%Y-%m-%d')
         cutoff_date = end.replace(year=2021, month=2, day=1)
-    if (int(area) < 10000 or end > cutoff_date):
-        print(wildfire +' burned area is less than 10000 or the end date is too recent')
+    if (int(area) < 3000 or end > cutoff_date):
+        print(wildfire +' burned area is less than 3000 or the end date is too recent')
         
     else:
         if os.path.isfile(wildfire +'/monthly_percip.npy'):

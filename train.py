@@ -2,8 +2,24 @@ import keras
 from keras.models import Model
 from keras.layers import Input, Conv3D, ConvLSTM2D, ConvLSTM3D, BatchNormalization
 import numpy as np
+import matplotlib.pyplot as plt
 from glob import glob
 import json
+import pywt
+import os
+
+def cap_ratios(arr):
+    (times, length, width, channel) = arr.shape
+    res = np.zeros(shape=arr.shape)
+    for c in range(channel):
+        for i in range(times):
+            for x in range(length):
+                for y in range(width):
+                    if arr[i, x, y, c] >= 2:
+                        res[i, x, y, c] = 2
+                    else:
+                        res[i, x, y, c] = arr[i, x, y, c]
+    return res
 
 def DWT(image): 
     h2 = int(image.shape[0]/2) +2
@@ -42,9 +58,14 @@ def load_npy(folder, frames): # used for MOD14A2, MOD13Q1
     mod11_g = glob(mod11)
     ndvi_g.sort()
     mod11_g.sort()
-    precip_list = np.load(precip)
+    
+    if os.path.exists(precip) is False:
+        print("NO PRECIP: ", folder)
+    else:
+        precip_list = np.load(precip)
 
     times = min(len(ndvi_g), len(mod11_g))
+
     if times < frames:
         return    
     ndvi_g = ndvi_g[-frames:]
@@ -59,7 +80,9 @@ def load_npy(folder, frames): # used for MOD14A2, MOD13Q1
         arr_ndvi = np.load(ndvi_g[i])
         #arr_ndvi = DWT_tensor(arr_ndvi)
         arr_ndvi = np.transpose(arr_ndvi, (1, 2, 0))
-        arr_ndvi = arr_ndvi[np.newaxis, ...]
+        quality = arr_ndvi[..., 2]
+        arr_ndvi = arr_ndvi[np.newaxis, :, :, :2]
+        arr_ndvi = cap_ratios(arr_ndvi)
 
         val_p = precip_list[i]
         arr_precip = np.ones(shape=(1, dims, dims))*val_p
@@ -87,7 +110,7 @@ for file in files:
         f = open(prof)
         info = json.load(f)
         if type(info['info']['acres_burned']) != str:
-            if info['info']['acres_burned'] >= 10000:
+            if info['info']['acres_burned'] >= 3000:
                 arr = load_npy(file, frames) # many fires (~30) do not have an acres_burned value, instead it is an empty string "".
                                      # these fires are minor and only last around 1 or 2 months.
                                      # for now, doing a try except to get around this is good enough.
@@ -95,56 +118,62 @@ for file in files:
                 file_list = np.append(file_list, file)
     except:
         continue
-        
-during = data[:, 0:frames-1, :, :, :]
-after = data[:, 1:, :, :, :]
 
 
 print("FINAL SHAPE:", data.shape)
 
-during = data[:, 0:frames-1, :, :, :] # all but last frame
+during = data[:, 0:frames-1, 15:35, 15:35, :] # all but last frame
 #during = during[:, :, :, :, np.newaxis]
 
-after = data[:, 1:, :, :, :] # missing first frame (shifted forward 1)
+after = data[:, 1:, 15:35, 15:35, 0] # missing first frame (shifted forward 1)
 #after = after[:, :, :, :, np.newaxis]
+print("x_train shape:", during.shape)
+print("y_train shape:", after.shape)
 
 
+inp = Input(shape=(None, 20, 20, channels))
 
-inp = Input(shape=(None, dims, dims, channels))
-
-x = ConvLSTM2D(filters=128, kernel_size=(3, 3), 
+x = ConvLSTM2D(filters=32, kernel_size=(3, 3), 
                    padding='same', return_sequences=True, activation="relu")(inp)
 x = BatchNormalization()(x)
 
-x = ConvLSTM2D(filters=128, kernel_size=(3, 3),
+x = ConvLSTM2D(filters=64, kernel_size=(3, 3),
                    padding='same', return_sequences=True, activation="relu")(x)
 x = BatchNormalization()(x)
 
-x = ConvLSTM2D(filters=128, kernel_size=(3, 3),
+x = ConvLSTM2D(filters=32, kernel_size=(3, 3),
                    padding='same', return_sequences=True, activation="relu")(x)
 x = BatchNormalization()(x)
 
-x = ConvLSTM2D(filters=128, kernel_size=(3, 3),
-                   padding='same', return_sequences=True, activation="relu")(x)
-x = BatchNormalization()(x)
+# x = ConvLSTM2D(filters=64, kernel_size=(3, 3),
+#                    padding='same', return_sequences=True, activation="relu")(x)
+# x = BatchNormalization()(x)
 
-x = ConvLSTM2D(filters=128, kernel_size=(3, 3),
-                   padding='same', return_sequences=True, activation="relu")(x)
-x = BatchNormalization()(x)
+# x = ConvLSTM2D(filters=32, kernel_size=(3, 3),
+#                    padding='same', return_sequences=True, activation="relu")(x)
+# x = BatchNormalization()(x)
 
-x = Conv3D(filters=channels, kernel_size=(3, 3, 3),
+x = Conv3D(filters=1, kernel_size=(3, 3, 3),
                activation='sigmoid',
                padding='same', data_format='channels_last')(x)
 
 model = Model(inp, x)
 optimizer = keras.optimizers.Adam(learning_rate=0.0001)
-model.compile(loss='mean_squared_error', optimizer=optimizer)
+model.compile(loss='mean_absolute_error', optimizer=optimizer)
 
-model.fit(during, # timestamps during wildfire
+model.summary()
+
+history = model.fit(during, # timestamps during wildfire
         after, # predictions (timestamps to predict)
         batch_size=10,
-        epochs=20,
+        epochs=100,
         validation_split=0.20, 
        )
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model loss')
+plt.ylabel('Loss')
+plt.xlabel('Epochs')
 
 model.save('convLSTM_trained')

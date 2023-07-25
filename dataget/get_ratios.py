@@ -26,8 +26,8 @@ def get_ratio(folder): # 0 is NDVI, 1 is EVI
         
         res = np.zeros(shape=(ndvi_arr.shape))
         
-        for layer in range(len(ndvi_arr)):
-            for i in range(len(ndvi_arr[0])):
+        for layer in range(len(ndvi_ref)):
+            for i in range(len(ndvi_ref[0])):
                 for j in range(len(ndvi_arr[0])):
                     if (ndvi_arr[layer][i][j] <= 0) or (ndvi_ref[layer][i][j] <= 0):
                         res[layer][i][j] = 0
@@ -47,7 +47,7 @@ for folder in folders:
     end = datetime.datetime.strptime(info['end'], '%Y-%m-%d')
     cutoff_date = end.replace(year=2021, month=2, day=1)
     if type(info['info']['acres_burned']) != str:
-        if(info['info']['acres_burned'] >= 10000) and (end <= cutoff_date):
+        if(info['info']['acres_burned'] >= 3000) and (end <= cutoff_date):
             print(folder)
             try:
                 get_ratio(folder)
